@@ -1,11 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { MENU_ITEMS } from "@/constants";
 
-// A slice is nothing but collection of Redux reducer logic and actions for a single feature
-// in your app and it is defined together in a single file.
 const initialState = {
   activeMenuItem: MENU_ITEMS.PENCIL,
-  actionMeniItem: null,
+  actionMenuItem: null,
 };
 
 export const menuSlice = createSlice({
@@ -16,7 +14,7 @@ export const menuSlice = createSlice({
       state.activeMenuItem = action.payload;
     },
     actionItemClick: (state, action) => {
-      state.activeMenuItem = action.payload;
+      state.actionMenuItem = action.payload;
     },
   },
 });
