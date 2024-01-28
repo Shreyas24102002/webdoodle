@@ -1,18 +1,18 @@
-import { MENU_ITEMS } from "@/constants";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { menuItemClick, actionItemClick } from "@/slice/menuSlice";
+
+import { MENU_ITEMS } from "@/constants";
+import { actionItemClick } from "@/slice/menuSlice";
+
+import { socket } from "@/socket";
 
 const Board = () => {
   const dispatch = useDispatch();
   const canvasRef = useRef(null);
-
   const drawHistory = useRef([]);
   const historyPointer = useRef(0);
-
   const shouldDraw = useRef(false);
   const { activeMenuItem, actionMenuItem } = useSelector((state) => state.menu);
-
   const { color, size } = useSelector((state) => state.toolbox[activeMenuItem]);
 
   useEffect(() => {
@@ -45,26 +45,32 @@ const Board = () => {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
-    const changeConfig = () => {
+    const changeConfig = (color, size) => {
       context.strokeStyle = color;
       context.lineWidth = size;
     };
 
-    changeConfig();
+    const handleChangeConfig = (config) => {
+      console.log("config", config);
+      changeConfig(config.color, config.size);
+    };
+    changeConfig(color, size);
+    socket.on("changeConfig", handleChangeConfig);
+
+    return () => {
+      socket.off("changeConfig", handleChangeConfig);
+    };
   }, [color, size]);
 
+  // before browser pain
   useLayoutEffect(() => {
     if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
-    // when we are mounting i.e. Earlier when we created our canvas only small portion
-    // was in use. But using this, whole screen is alloted for our canvas.
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
@@ -77,18 +83,28 @@ const Board = () => {
       context.lineTo(x, y);
       context.stroke();
     };
-
     const handleMouseDown = (e) => {
       shouldDraw.current = true;
-      context.beginPath();
-      beginPath(e.clientX, e.clientY);
+      beginPath(
+        e.clientX || e.touches[0].clientX,
+        e.clientY || e.touches[0].clientY
+      );
+      socket.emit("beginPath", {
+        x: e.clientX || e.touches[0].clientX,
+        y: e.clientY || e.touches[0].clientY,
+      });
     };
 
     const handleMouseMove = (e) => {
-      if (!shouldDraw.current) {
-        return;
-      }
-      drawLine(e.clientX, e.clientY);
+      if (!shouldDraw.current) return;
+      drawLine(
+        e.clientX || e.touches[0].clientX,
+        e.clientY || e.touches[0].clientY
+      );
+      socket.emit("drawLine", {
+        x: e.clientX || e.touches[0].clientX,
+        y: e.clientY || e.touches[0].clientY,
+      });
     };
 
     const handleMouseUp = (e) => {
@@ -98,18 +114,38 @@ const Board = () => {
       historyPointer.current = drawHistory.current.length - 1;
     };
 
+    const handleBeginPath = (path) => {
+      beginPath(path.x, path.y);
+    };
+
+    const handleDrawLine = (path) => {
+      drawLine(path.x, path.y);
+    };
+
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseup", handleMouseUp);
+
+    canvas.addEventListener("touchstart", handleMouseDown);
+    canvas.addEventListener("touchmove", handleMouseMove);
+    canvas.addEventListener("touchend", handleMouseUp);
+
+    socket.on("beginPath", handleBeginPath);
+    socket.on("drawLine", handleDrawLine);
 
     return () => {
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseup", handleMouseUp);
+
+      canvas.removeEventListener("touchstart", handleMouseDown);
+      canvas.removeEventListener("touchmove", handleMouseMove);
+      canvas.removeEventListener("touchend", handleMouseUp);
+
+      socket.off("beginPath", handleBeginPath);
+      socket.off("drawLine", handleDrawLine);
     };
   }, []);
-
-  // console.log(color, size); testing if color is changing or not
 
   return <canvas ref={canvasRef}></canvas>;
 };
