@@ -84,26 +84,28 @@ const Board = () => {
       context.stroke();
     };
     const handleMouseDown = (e) => {
+      const rect = canvas.getBoundingClientRect();
       shouldDraw.current = true;
       beginPath(
-        e.clientX || e.touches[0].clientX,
-        e.clientY || e.touches[0].clientY
+        e.clientX - rect.left || e.touches[0].clientX - rect.left,
+        e.clientY - rect.top || e.touches[0].clientY - rect.top
       );
       socket.emit("beginPath", {
-        x: e.clientX || e.touches[0].clientX,
-        y: e.clientY || e.touches[0].clientY,
+        x: e.clientX - rect.left || e.touches[0].clientX - rect.left,
+        y: e.clientY - rect.top || e.touches[0].clientY - rect.top,
       });
     };
 
     const handleMouseMove = (e) => {
       if (!shouldDraw.current) return;
+      const rect = canvas.getBoundingClientRect();
       drawLine(
-        e.clientX || e.touches[0].clientX,
-        e.clientY || e.touches[0].clientY
+        e.clientX - rect.left || e.touches[0].clientX - rect.left,
+        e.clientY - rect.top || e.touches[0].clientY - rect.top
       );
       socket.emit("drawLine", {
-        x: e.clientX || e.touches[0].clientX,
-        y: e.clientY || e.touches[0].clientY,
+        x: e.clientX - rect.left || e.touches[0].clientX - rect.left,
+        y: e.clientY - rect.top || e.touches[0].clientY - rect.top,
       });
     };
 
